@@ -1,29 +1,46 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+const globalErrorHandler = require('./middlewares/errorMiddleware');
 
 const app = express();
 const cors = require('cors');
 
 app.use(cors());
 // Middleware to parse JSON data
-app.use(bodyParser.json())
+//app.use(bodyParser.json())
+app.use(express.json());
+app.use(globalErrorHandler);
 
 const PORT = process.env.PORT || 8000;
 
-// Sample data
-const products = [
-    { id: 1, name: "Product A", price: 50, description: "Description for product A", rating: 4},
-    { id: 2, name: "Product B", price: 100, description: "Description for product B", rating: 5},
-];
+require('dotenv').config();
 
-// Endpoint for products
-app.get('/api/products', (req, res) => {
-    res.json({ products });
-    console.log(products);
-});
+// Connect to MongoDB Atlas
+mongoose.connect('mongodb+srv://shoppingcart:shoppingcart@cluster0.rmabkgg.mongodb.net/', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => {
+  console.log('MongoDB connected...');
+}).catch(err => console.log(err));
 
+// mongoose.connection.once('open', () => {
+//     console.log('Connected to MongoDB');
+// })
+
+const userRoutes = require('./routes/UserRoutes')
+const productRoutes = require('./routes/ProductRoutes');
+const cartRoutes = require('./routes/CartRoutes');
+
+// Routes
+app.use('/api/users', userRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/cart', cartRoutes);
 
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 })
+
+
+

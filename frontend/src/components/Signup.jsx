@@ -1,0 +1,64 @@
+import React from 'react';
+import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom'
+import { signupUser } from '../actions/userActions';
+
+const Signup = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const handleSignup = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const userData = {
+        username: formData.get('username'),
+        firstName: formData.get('firstName'),
+        lastName: formData.get('lastName'),
+        email: formData.get('email'),
+        password: formData.get('password'),
+        confirmPassword: formData.get('confirmPassword')
+    };
+    await dispatch(signupUser(userData));
+    navigate("/login");
+  };
+
+  return (
+    <div className="container mt-5">
+      {/* Signup form */}
+      <div className="card p-4">
+        <h2 className="text-center">Sign Up</h2>
+        <form onSubmit={handleSignup}>
+            <div className="form-group">
+                <label htmlFor="username">Username</label>
+                <input type="text" name="username" className="form-control" placeholder="Username" required />
+            </div>
+            <div className="form-group">
+                <label htmlFor="firstName">First Name</label>
+                <input type="text" name="firstName" className="form-control" placeholder="First Name" required />
+            </div>
+            <div className="form-group">
+                <label htmlFor="lastName">Last Name</label>
+                <input type="text" name="lastName" className="form-control" placeholder="Last Name" required />
+            </div>
+            <div className="form-group">
+                <label htmlFor="email">Email</label>
+                <input type="email" name="email" className="form-control" placeholder="Email" required />
+            </div>
+            <div className="form-group">
+                <label htmlFor="password">Password</label>
+                <input type="password" name="password" className="form-control" placeholder="Password" required />
+            </div>
+            <div className="form-group">
+                <label htmlFor="confirmPassword">Confirm Password</label>
+                <input type="password" name="confirmPassword" className="form-control" placeholder="Confirm Password" required />
+            </div>
+            <div className="form-group text-center">
+                <button type='submit' className="btn btn-primary">Sign Up</button>
+            </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default Signup;
