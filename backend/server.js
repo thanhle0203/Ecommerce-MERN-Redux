@@ -35,7 +35,7 @@ const cartRoutes = require('./routes/CartRoutes');
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/cart', cartRoutes);
+app.use('/api/carts', cartRoutes);
 
 
 app.listen(PORT, () => {
