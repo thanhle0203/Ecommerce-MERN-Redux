@@ -36,13 +36,13 @@ const HomePage = () => {
 
       console.log('User is logged in, sending request to /api/cart');
 
-      fetch('http://localhost:8000/api/cart', {
+      fetch('http://localhost:8000/api/carts', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${user.token}`
         },
-        body: JSON.stringify({ productId, userId: user.id }),
+        body: JSON.stringify({ userId: user.id, productId}),
       })
       .then(res => {
         console.log('Response from /api/cart: ', res);
