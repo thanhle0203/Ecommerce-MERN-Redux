@@ -34,7 +34,7 @@ export const Cart = () => {
             ))}
 
             <h2>Total Price: ${total}</h2>
-
+            <button className="btn btn-primary me-2">Go To Checkout</button>
         </div>
     );
 }
