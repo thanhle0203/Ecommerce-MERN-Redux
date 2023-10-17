@@ -40,6 +40,7 @@ const authenticateUser = async (req, res, next) => {
             // If JWT verification fails, return 401 Unauthorized
             return res.status(401).json({ message: 'Invalid token.' });
         }
+        console.error('Error:', error.message);
         // Otherwise, return 500 Server Error
         return res.status(500).json({ message: 'Internal server error.' });
     }

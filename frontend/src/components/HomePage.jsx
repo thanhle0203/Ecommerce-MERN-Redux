@@ -26,8 +26,8 @@ const HomePage = () => {
         })
     }, [dispatch]);
 
-    const dispatchAddToCart = (productId) => {
-    console.log('Attempting to add to cart: ', productId);
+    const dispatchAddToCart = (product) => {
+    console.log('Attempting to add to cart: ', product);
 
       if (!user) {
         console.error('User is not logged in.');
@@ -42,7 +42,7 @@ const HomePage = () => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${user.token}`
         },
-        body: JSON.stringify({ userId: user.id, productId}),
+        body: JSON.stringify({ userId: user.id, productId: product.id, quantity: 1, price: product.price, }),
       })
       .then(res => {
         console.log('Response from /api/cart: ', res);
@@ -51,7 +51,7 @@ const HomePage = () => {
       .then(data => {
         console.log('Data received from /api/cart: ', data);
         if (data.success) {
-            dispatch(addToCart(productId));
+            dispatch(addToCart(product));
             setSuccessMessage('Product added to cart successfully!');
             setTimeout(() => setSuccessMessage(''), 3000);
         } else {

@@ -16,95 +16,125 @@ function authenticate(req, res, next) {
     next();
 }
 
-exports.addToCart = async (req, res, next) => {
+const createOrUpdateCart = async (userId, productId, quantity) => {
+    try {
+      const product = await Product.findById(productId);
+      if (!product) {
+        throw new Error('Product not found');
+      }
+  
+      let cart = await Cart.findOne({ user: userId });
+  
+      if (cart) {
+        // Cart exists, so we need to check if the product is already there
+        const itemIndex = cart.items.findIndex(p => p.product.equals(productId));
+  
+        if (itemIndex > -1) {
+          // Product exists in the cart, update quantity
+          cart.items[itemIndex].quantity += quantity;
+        } else {
+          // Product is not in cart, add now
+          cart.items.push({
+            product: productId,
+            quantity: quantity,
+            price: product.price,  // assuming price is needed and is stored here
+          });
+        }
+        // Save the cart with updated information
+        await cart.save();
+      } else {
+        // No cart for user, create new cart
+        const newCart = new Cart({
+          user: userId,
+          items: [{
+            product: productId,
+            quantity: quantity,
+            price: product.price,  // assuming price is needed and is stored here
+          }],
+        });
+        await newCart.save();
+      }
+    } catch (error) {
+      // It's good practice to throw the error further to be handled by the calling method
+      throw error;
+    }
+  };
+  
+  exports.addToCart = async (req, res, next) => {
     try {
       const userId = req.user._id;
-      const { items } = req.body; // Adjust this line to receive items.
+      const { items } = req.body;
   
       if (!items || items.length === 0) {
         return res.status(400).send('No items provided');
       }
   
-      // Check if the user exists before processing further
       const userExists = await User.findById(userId);
       if (!userExists) {
         return res.status(404).send('User not found');
       }
   
-      // Assuming you might want to add multiple items in one request.
-      // Loop through each item intended for the cart
-for (let item of items) {
-    const { productId, quantity } = item; // extract productId and quantity from current item
-    const product = await Product.findById(productId);
-
-    if (!product) {
-        return res.status(404).send('One or more products were not found');
-    }
-
-    let cart = await Cart.findOne({ user: userId }); // Use userId to find the cart
-
-    if (cart) {
-        // Cart exists for user, so we need to check if the product is already in the cart
-        const itemIndex = cart.items.findIndex(p => p.product.equals(productId)); // find index of the product in the items array
-
-        if (itemIndex > -1) {
-            // Product exists in the cart, update the quantity and price
-            cart.items[itemIndex].quantity += quantity; // update quantity
-            cart.items[itemIndex].price = product.price; // ensure price is up to date
-        } else {
-            // Product is not in the cart, add it as a new item
-            cart.items.push({
-                product: productId,
-                quantity: quantity,
-                price: product.price,
-            });
-        }
-        // Since we modified our cart, we need to save the changes
-        await cart.save(); // this will run the 'pre save' middleware to update the totalPrice before actually saving
-    } else {
-        // No cart exists, create a new one
-        const newCartData = {
-            user: userId,
-            items: [{
-                product: productId,
-                quantity: quantity,
-                price: product.price,
-            }],
-        };
-        cart = new Cart(newCartData); // create a new Cart instance
-        await cart.save(); // save the newly created cart
-    }
-}
-
-// After processing all items, we can return the updated cart as a response
-return res.status(201).send(cart);
+      // If you need to validate items, consider doing it here before processing
+      // For example, check if quantities are positive, product IDs are valid, etc.
+  
+      // Using Promise.all to allow parallel execution, which could be faster than sequential execution
+      await Promise.all(items.map(({ productId, quantity }) => {
+        return createOrUpdateCart(userId, productId, quantity);
+      }));
+  
+      // After all items are processed, retrieve the cart to send it in the response
+      const updatedCart = await Cart.findOne({ user: userId }).populate('items.product'); // This is assuming you have product details in items
+  
+      return res.status(201).send(updatedCart);
     } catch (error) {
-      console.error(error);
+      console.error("Error in addToCart: ", error);
+      // Handle specific messages, giving clearer feedback, or keep it general to avoid exposing details
       res.status(500).send("An error occurred while adding product to cart");
     }
   };
   
 
 // Get the current user's cart
+// This middleware retrieves the current user's cart.
 exports.getCart = async (req, res) => {
-  try {
-    const cart = await Cart.findOne({ user: req.user._id }).populate('items.product');
-    if (!cart) {
-      return res.status(404).json({ message: 'No cart found for this user.' });
+    try {
+      // Find the cart associated with the user and populate it to get detailed information for each product.
+      const cart = await Cart.findOne({ user: req.user._id }).populate('items.product');
+  
+      if (!cart) {
+        return res.status(404).json({ message: 'No cart found for this user.' });
+      }
+  
+      // If the cart is found but is empty, you might want to handle this case specifically.
+      if (cart.items.length === 0) {
+        return res.status(200).json({ message: 'Your cart is empty.' });
+      }
+  
+      // Optionally, calculate the total price dynamically instead of relying on a potentially outdated field in the database.
+      let totalPrice = 0;
+      cart.items.forEach(item => {
+        // Ensure that the product information is complete. If not, there's a deeper issue.
+        if (!item.product) {
+          throw new Error('One or more products in the cart were not found. Please contact support.');
+        }
+        totalPrice += item.quantity * item.product.price; // assuming price is a valid field of product
+      });
+  
+      // You can directly send the totalPrice in the response without updating the cart model.
+      // This approach avoids unnecessary database writes and keeps the logic simple.
+  
+      // Respond with the cart information and the dynamically calculated total price.
+      res.json({
+        cart,  // This contains detailed product information due to the 'populate' method.
+        totalPrice  // This is the up-to-date total price, calculated on the fly.
+      });
+    } catch (error) {
+      console.error("Error in getCart: ", error);
+      // Send a 500 Internal Server Error status if something unexpected happened.
+      res.status(500).json({ message: 'An unexpected error occurred while retrieving your cart. Please try again later.' });
     }
-
-    // Optionally, to calculate the total price dynamically
-    let totalPrice = 0;
-    cart.items.forEach(item => {
-      totalPrice += item.quantity * item.product.price;
-    });
-    cart.totalPrice = totalPrice; // assuming totalPrice is a field in Cart model
-
-    res.json(cart);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+  };
+  
 
 // Update the current user's cart
 exports.updateCart = async (req, res) => {
@@ -181,5 +211,6 @@ exports.emptyCart = async (req, res) => {
     res.json(updatedCart);
   } catch (error) {
     res.status(500).json({ message: error.message });
+   
   }
 };
